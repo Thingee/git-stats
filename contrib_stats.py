@@ -1,10 +1,11 @@
-import sys
-import datetime
-import subprocess
 from collections import defaultdict
+import datetime
 import json
-import re
 from matplotlib import pyplot
+import os
+import re
+import subprocess
+import sys
 import unicodedata
 
 
@@ -66,10 +67,16 @@ def get_max_min_days_ago():
             newest_date = date
     return oldest_date.date(), newest_date.date()
 
+git_stats_directory = os.path.split(os.path.abspath(os.path.realpath(sys.argv[0])))[0]
+project = sys.argv[1]
+project_data = '%s/results/%s/data' % (git_stats_directory, project)
+project_graphs = '%s/results/%s/graphs' % (git_stats_directory, project)
+
 FIRST_DATE, LAST_DATE = get_max_min_days_ago()
-FILENAME = 'contrib_stats.data'
-REVIEWS_FILENAME = 'swift_gerrit_history.patches'
-PEOPLE_MAP_FILENAME = '/Users/john/Documents/stackalytics/etc/default_data.json'
+
+FILENAME = '%s/contrib_stats.data' % git_stats_directory
+REVIEWS_FILENAME = '%s/gerrit_history.patches' % project_data
+PEOPLE_MAP_FILENAME = '%s/etc/default_data.json' % git_stats_directory
 PERCENT_ACTIVE_FILENAME = 'percent_active.data'
 
 excluded_authors = (
@@ -146,7 +153,7 @@ def get_one_day(date):
             match = re.match(r'\d+\s+(.*)', line)
             author = match.group(1)
             author = author.decode('utf8')
-            if author not in excluded_authors:
+            if author not in excluded_authors and not author.endswith(' CI'):
                 authors.add(author)
             authors_by_count[author] += 1
     return authors, authors_by_count
@@ -182,7 +189,7 @@ def load_reviewers(filename):
                     continue
                 email = '<%s>' % reviewer['email']
                 name_email = '%s %s' % (reviewer['name'], email)
-                if name_email not in excluded_authors:
+                if name_email not in excluded_authors and not reviewer['name'].endswith(' CI'):
                     reviewers_by_date[when].add(name_email)
     return reviewers_by_date
 
@@ -322,7 +329,8 @@ def draw_contrib_activity_graph(dates_by_person, start_date, end_date):
     ax.set_frame_on(False)
     fig = pyplot.gcf()
     fig.set_size_inches(horizontal_size, vertical_size)
-    fig.savefig('contrib_activity.png', bbox_inches='tight', pad_inches=0.25)
+    filename = '%s/contrib_activity.png' % project_graphs
+    fig.savefig(filename, bbox_inches='tight', pad_inches=0.25)
     pyplot.close()
 
     # maybe a bad place, but we have the percent active per person, so write it out
@@ -358,7 +366,8 @@ def draw_active_contribs_trends(actives_windows, actives, actives_avg, start_dat
     fig = pyplot.gcf()
     fig.set_size_inches(24, 8)
     fig.set_frameon(False)
-    fig.savefig('active_contribs.png', bbox_inches='tight', pad_inches=0.25)
+    filename = '%s/active_contribs.png' % project_graphs
+    fig.savefig(filename, bbox_inches='tight', pad_inches=0.25)
     pyplot.close()
 
 def draw_total_contributors_graph(people_by_date, start_date, end_date):
@@ -413,7 +422,8 @@ def draw_total_contributors_graph(people_by_date, start_date, end_date):
     pyplot.grid(b=True, which='both', axis='both')
     fig = pyplot.gcf()
     fig.set_size_inches(24, 8)
-    fig.savefig('total_contribs.png', bbox_inches='tight', pad_inches=0.25)
+    filename = '%s/total_contribs.png' % project_graphs
+    fig.savefig(filename, bbox_inches='tight', pad_inches=0.25)
     pyplot.close()
 
 
